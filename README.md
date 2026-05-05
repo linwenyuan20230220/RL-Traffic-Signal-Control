@@ -2,10 +2,10 @@
 
 本專案旨在解決強化學習 (RL) 應用於交通號誌控制 (Traffic Signal Control, TSC) 時，因感測器物理限制所造成的「視野受限 (Partial Visibility)」與「資訊延遲 (Information Latency)」問題。我們提出了一種具備時間與空間感知能力的創新架構 **STGATDQN**，顯著提升了模型在不完美觀察條件下的強健性。
 
-## 🚀 研究動機與痛點 (Motivation)
+##  研究動機與痛點 (Motivation)
 在現實世界的交通場景中，理想的全域觀察（Global Observation）難以達成。感測器可能因遮蔽物導致視角有限，或因網路傳輸造成資料延遲。現有的頂尖模型在這些「干擾環境」下往往表現不佳，容易產生過度擬合或無效決策。
 
-## 🔍 研究路徑與嚴謹性 (Research Workflow)
+##  研究路徑與嚴謹性 (Research Workflow)
 
 我們的研究遵循高度嚴謹的科學驗證流程，分為以下四個階段：
 
@@ -24,13 +24,13 @@
 ### 4. 實驗成果 (Results)
 最終數據顯示，在同等干擾強度下，**STGATDQN** 在降低交通延遲 (Time Loss) 與維持穩定相位 (Phase Length) 的表現上，均顯著優於 NeurIPS 的 IDQN 與 CIKM 的 CoLight 模型。
 
-## 🛠️ 技術棧 (Tech Stack)
+##  技術棧 (Tech Stack)
 * **Simulator:** SUMO (Simulation of Urban MObility)
 * **Framework:** RESCO (Reinforcement Learning Benchmarks for Traffic Signal Control)
 * **Language:** Python 3.x
 * **Libraries:** PyTorch, NumPy, Pandas, Matplotlib
 
-## 📝 貢獻聲明 (Acknowledgement)
+##  貢獻聲明 (Acknowledgement)
 本專案的底層強化學習與交通號誌模擬框架，是基於 **RESCO** 開源專案進行二次開發。
 * **原始框架來源：** [J. Ault et al., NeurIPS 2021] 
 * **本專案核心貢獻：** 1. 實作「視野受限」與「資訊延遲」的環境干擾模擬機制。
