@@ -24,22 +24,21 @@
 ### 4. 實驗成果 (Results)
 為了驗證模型的強健性，我們在不同的干擾條件下進行了對照實驗，比較了 NeurIPS 的 IDQN、CIKM 的 CoLight 以及我們提出的 STGATDQN。
 
-#### 🧪 實驗一：視野受限 (Partial Visibility 5m-8m) 下的交通延遲表現
-在感測器視野極度受限的情況下，傳統模型容易失去判斷能力。下圖顯示，STGATDQN 能夠透過時間注意力機制彌補空間觀測的不足，顯著降低了整體的 Time Loss：
+  #### 實驗一：視野受限 (Partial Visibility 5m-8m) 下的交通延遲表現
+  在感測器視野極度受限的情況下，傳統模型容易失去判斷能力。下圖顯示，STGATDQN 能夠透過時間注意力機制彌補空間觀測的不足，顯著降低了整體的 Time Loss：
 
-![5m-8m Time Loss Comparison](images/timeloss_5m_8m.png)
-*(請確保將括號內的檔名替換為您實際的圖片檔名)*
-
-#### 🧪 實驗二：資訊延遲 (Network Latency) 下的表現
-當交通號誌與伺服器之間存在傳輸延遲時，STGATDQN 依然能保持穩定的決策，避免了交通擁塞的惡化：
-
-![Delay Time Loss Comparison](images/delay_timeloss.png)
-
-#### 🚦 號誌週期穩定度 (Phase Length Stability)
-與 IDQN 在干擾下容易產生「綠燈異常延長」的現象不同，STGATDQN 與 CoLight 皆能維持合理且穩定的號誌週期，這對於實際道路部署的安全限制（Safety Rules）具有重要意義。
-
-![Phase Length Stability](images/phase_length_10m_15m.png)
-最終數據顯示，在同等干擾強度下，**STGATDQN** 在降低交通延遲 (Time Loss) 與維持穩定相位 (Phase Length) 的表現上，均顯著優於 NeurIPS 的 IDQN 與 CIKM 的 CoLight 模型。
+  ![5m-8m Time Loss Comparison](images/timeloss_5m_8m.png)
+  
+  #### 實驗二：資訊延遲 (Network Latency) 下的表現
+  當交通號誌與伺服器之間存在傳輸延遲時，STGATDQN 依然能保持穩定的決策，避免了交通擁塞的惡化：
+  
+  ![Delay Time Loss Comparison](images/delay_timeloss.png)
+  
+  #### 號誌週期穩定度 (Phase Length Stability)
+  與 IDQN 在干擾下容易產生「綠燈異常延長」的現象不同，STGATDQN 與 CoLight 皆能維持合理且穩定的號誌週期，這對於實際道路部署的安全限制（Safety Rules）具有重要意義。
+  
+  ![Phase Length Stability](images/phase_length_10m_15m.png)
+  最終數據顯示，在同等干擾強度下，**STGATDQN** 在降低交通延遲 (Time Loss) 與維持穩定相位 (Phase Length) 的表現上，均顯著優於 NeurIPS 的 IDQN 與 CIKM 的 CoLight 模型。
 
 ##  技術棧 (Tech Stack)
 * **Simulator:** SUMO (Simulation of Urban MObility)
