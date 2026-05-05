@@ -283,3 +283,28 @@ FMA2C:
   norm_wave: 5.0
   norm_wait: 100.0
   alpha: 0.75
+  
+COGATDQN:
+  module: action_value.cogat_dqn
+  state: drq
+  reward: wait
+  learning_rate: 1e-3
+  batch_size: 32
+  discount: 0.99
+  epsilon_begin: 1.0
+  epsilon_end: 0.01
+  buffer_size: 20000
+  epsilon_decay_period: 0.8
+
+
+STGATDQN:
+  module: action_value.stgat_dqn
+  state: drq
+  reward: wait
+  learning_rate: 1e-4
+  batch_size: 64
+  discount: 0.99
+  epsilon_begin: 1.0
+  epsilon_end: 0.01
+  buffer_size: 20000
+  epsilon_decay_period: 0.8

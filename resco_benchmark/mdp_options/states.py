@@ -7,7 +7,8 @@ from resco_benchmark.config.config import config as cfg
 from resco_benchmark.traffic_signal import Signal, Lane
 from resco_benchmark.utils.utils import one_hot_list
 
-
+import random
+from collections import deque
 def wave(signals: dict[str, Signal]) -> dict[str, np.ndarray]:
     states: dict[str, typing.Any] = dict()
     for signal_id in signals:
@@ -529,3 +530,279 @@ def fma2c_full(signals):
 
 def state_builder(signals):
     return cfg.state_builder(signals)
+# ==========================================================
+#  [核心函式] 近視眼邏輯核心
+# ==========================================================
+def _drq_limited_core(signals: dict[str, Signal], visibility_limit: float) -> dict[str, np.ndarray]:
+    """
+    [近視版 DrQ 核心] 
+    參數 visibility_limit 由外部傳入，決定 Agent 能看多遠。
+    """
+    observations = dict()
+    
+    for signal_id in signals:
+        signal = signals[signal_id]
+        obs = []
+        act_index = signal.current_phase
+        
+        # 遍歷每一條車道
+        for i, lane_id in enumerate(signal.lanes):
+            lane_obs = []
+            
+            # 1. 第一個特徵：是否為綠燈 (這不用視力，Agent 知道自己的燈號)
+            if i == act_index:
+                lane_obs.append(1)
+            else:
+                lane_obs.append(0)
+
+            # === 開始計算近視眼數據 ===
+            visible_wait = 0
+            visible_speed = 0
+            visible_approach = 0
+            visible_queue = 0
+            visible_count = 0 
+
+            lane_obj = signal.observation.get_lane(lane_id)
+            lane_len = lane_obj.length
+            
+            # 遍歷車輛，只統計 visibility_limit 內的
+            for veh_id, vehicle in lane_obj.vehicles.items():
+                try:
+                    # 取得距離
+                    veh_pos = signal.sumo.vehicle.getLanePosition(veh_id)
+                    dist_to_intersection = lane_len - veh_pos
+                    
+                    # [關鍵過濾] 使用傳入的 visibility_limit
+                    if dist_to_intersection <= visibility_limit:
+                        # 累加資訊
+                        visible_wait += vehicle.wait
+                        visible_speed += vehicle.average_speed
+                        visible_count += 1
+                        
+                        if vehicle.queued:
+                            visible_queue += 1
+                        else:
+                            # 如果沒排隊，就算是 approaching
+                            visible_approach += 1
+                            
+                except Exception:
+                    continue
+
+            # 2. 第二個特徵：接近車輛數 (Approaching)
+            lane_obs.append(visible_approach)
+            
+            # 3. 第三個特徵：總等待時間 (Total Wait)
+            lane_obs.append(visible_wait)
+            
+            # 4. 第四個特徵：排隊數 (Queue)
+            lane_obs.append(visible_queue)
+
+            # 5. 第五個特徵：總速度 (Total Speed)
+            lane_obs.append(visible_speed)
+            
+            obs.append(lane_obs)
+
+        observations[signal_id] = np.expand_dims(np.asarray(obs), axis=0)
+    
+    return observations
+
+# ==========================================================
+#  以下是你指令要呼叫的不同視距等級
+# ==========================================================
+def drq_limited_5m(signals):
+    #""" [高度近視] 只能看到路口 5 公尺內的車 """
+    return _drq_limited_core(signals, visibility_limit=5.0)
+def drq_limited_5o5m(signals):
+    #""" [高度近視] 只能看到路口 5 公尺內的車 """
+    return _drq_limited_core(signals, visibility_limit=5.5)
+def drq_limited_6m(signals):
+    #""" [高度近視] 只能看到路口 5 公尺內的車 """
+    return _drq_limited_core(signals, visibility_limit=6.0)
+def drq_limited_6o5m(signals):
+    #""" [高度近視] 只能看到路口 5 公尺內的車 """
+    return _drq_limited_core(signals, visibility_limit=6.5)
+def drq_limited_7m(signals):
+    #""" [高度近視] 只能看到路口 5 公尺內的車 """
+    return _drq_limited_core(signals, visibility_limit=7.0)
+def drq_limited_7o5m(signals):
+    #""" [高度近視] 只能看到路口 5 公尺內的車 """
+    return _drq_limited_core(signals, visibility_limit=7.5)
+def drq_limited_8m(signals):
+    #""" [高度近視] 只能看到路口 8 公尺內的車 """
+    return _drq_limited_core(signals, visibility_limit=8.0)
+def drq_limited_10m(signals):
+    #""" [高度近視] 只能看到路口 10 公尺內的車 """
+    return _drq_limited_core(signals, visibility_limit=10.0)
+def drq_limited_13m(signals):
+    #""" [高度近視] 只能看到路口 13 公尺內的車 """
+    return _drq_limited_core(signals, visibility_limit=13.0)
+def drq_limited_15m(signals):
+    #""" [高度近視] 只能看到路口 15 公尺內的車 """
+    return _drq_limited_core(signals, visibility_limit=15.0)
+def drq_limited_30m(signals):
+    #""" [中度近視] 只能看到路口 30 公尺內的車 """
+    return _drq_limited_core(signals, visibility_limit=30.0)
+def drq_limited_50m(signals):
+    #""" [輕度近視] 只能看到路口 50 公尺內的車 """
+    return _drq_limited_core(signals, visibility_limit=50.0)
+def drq_limited_full(signals):
+    #""" [視力正常] 能看到整條路 (假設路長不超過 500m) """
+    return _drq_limited_core(signals, visibility_limit=500.0)
+# ==========================================================
+#  在 states.py 中加入以下內容
+# ==========================================================
+def _drq_pure_delayed_core(signals, mu, sigma, min_d, max_d):
+    #"""
+    #[內部核心函式] 負責處理純延遲邏輯，參數由外部傳入
+    #"""
+    observations = dict()
+
+    for signal_id in signals:
+        signal = signals[signal_id]
+
+        # 1. 初始化緩衝區 (長度根據 max_d 動態調整)
+        if not hasattr(signal, 'state_history'):
+            signal.state_history = deque(maxlen=max_d + 5)
+        # 模擬剛開始時清空
+        if signal.sumo.simulation.getTime() < 2.0:
+            signal.state_history.clear()
+
+        # 2. 獲取【全知視角】觀測值 (不限距離)
+        obs = []
+        act_index = signal.current_phase
+        for i, lane_id in enumerate(signal.lanes):
+            lane_obs = []
+            if i == act_index: lane_obs.append(1)
+            else: lane_obs.append(0)
+
+            # 手動計算該車道所有數據
+            current_wait, current_speed, current_queue, current_approach = 0, 0, 0, 0
+            lane_obj = signal.observation.get_lane(lane_id)
+            
+            for vehicle in lane_obj.vehicles.values():
+                current_wait += vehicle.wait
+                current_speed += vehicle.average_speed
+                if vehicle.queued:
+                    current_queue += 1
+                else:
+                    current_approach += 1
+            
+            lane_obs.extend([current_approach, current_wait, current_queue, current_speed])
+            obs.append(lane_obs)
+        
+        current_frame = np.expand_dims(np.asarray(obs), axis=0)
+        signal.state_history.append(current_frame)
+
+        # 3. 計算高斯延遲 (使用傳入的 mu, sigma)
+        delay_step = int(round(random.gauss(mu, sigma)))
+        # Clipping (使用傳入的 min, max)
+        delay_step = max(min_d, min(delay_step, max_d))
+
+        # 4. 取出歷史資料
+        if len(signal.state_history) > delay_step:
+            observations[signal_id] = signal.state_history[-1 - delay_step]
+        else:
+            observations[signal_id] = signal.state_history[0]
+
+    return observations
+
+# ==========================================================
+#  以下是你指令要呼叫的三個不同等級的函式
+# ==========================================================
+def drq_delay_level1(signals):
+    #""" 第一組：輕微延遲 (Mu=2, Max=4) """
+    return _drq_pure_delayed_core(signals, mu=2.0, sigma=1.0, min_d=0, max_d=4)
+def drq_delay_level2(signals):
+    #""" 第二組：中度延遲 (Mu=3, Max=5) """
+    return _drq_pure_delayed_core(signals, mu=3.0, sigma=1.0, min_d=1, max_d=5)
+def drq_delay_level3(signals):
+    #""" 第三組：重度延遲 (Mu=4, Max=6) """
+    return _drq_pure_delayed_core(signals, mu=4.0, sigma=1.0, min_d=2, max_d=6)
+def drq_delay_level4(signals):
+    #""" 第三組：重度延遲 (Mu=5, Max=7) """
+    return _drq_pure_delayed_core(signals, mu=5.0, sigma=1.0, min_d=3, max_d=7)
+def drq_delay_level5(signals):
+    #""" 第三組：重度延遲 (Mu=6, Max=8) """
+    return _drq_pure_delayed_core(signals, mu=6.0, sigma=1.0, min_d=4, max_d=8)
+def drq_delay_level6(signals):
+    #""" 第一組：輕微延遲 (Mu=2, Max=4) """
+    return _drq_pure_delayed_core(signals, mu=8.0, sigma=1.0, min_d=6, max_d=10)
+def drq_delay_level7(signals):
+    #""" 第二組：中度延遲 (Mu=3, Max=5) """
+    return _drq_pure_delayed_core(signals, mu=12.0, sigma=1.0, min_d=10, max_d=14)
+def drq_delay_level8(signals):
+    #""" 第三組：重度延遲 (Mu=4, Max=6) """
+    return _drq_pure_delayed_core(signals, mu=15.0, sigma=1.0, min_d=13, max_d=17)
+def drq_delay_level9(signals):
+    #""" 第三組：重度延遲 (Mu=5, Max=7) """
+    return _drq_pure_delayed_core(signals, mu=20.0, sigma=1.0, min_d=18, max_d=22)
+def drq_delay_level10(signals):
+    #""" 第三組：重度延遲 (Mu=6, Max=8) """
+    return _drq_pure_delayed_core(signals, mu=25.0, sigma=1.0, min_d=23, max_d=27)
+    
+def drq_limited_delayed(signals):
+    #"""
+    #【情境 B】近視 (50m) + 高斯分佈延遲
+    #1. 視力：只能看到 50m 內的車。
+    #2. 延遲：訊號傳輸有延遲，延遲步數符合高斯分佈。
+    #"""
+    # === [實驗參數] ===
+    VISIBILITY = 50.0     # 視力限制
+    DELAY_MU = 2.0        # 平均延遲 (Mean)
+    DELAY_SIGMA = 1.0     # 標準差 (Std Dev)
+    MIN_DELAY = 0         # 下界
+    MAX_DELAY = 5         # 上界
+    # =================
+
+    observations = dict()
+
+    for signal_id in signals:
+        signal = signals[signal_id]
+
+        # 1. 初始化緩衝區
+        if not hasattr(signal, 'state_history'):
+            signal.state_history = deque(maxlen=MAX_DELAY + 5)
+        if signal.sumo.simulation.getTime() < 2.0:
+            signal.state_history.clear()
+
+        # 2. 獲取【近視視角】觀測值
+        obs = []
+        act_index = signal.current_phase
+        for i, lane_id in enumerate(signal.lanes):
+            lane_obs = []
+            if i == act_index: lane_obs.append(1)
+            else: lane_obs.append(0)
+
+            # 手動計算 50m 內的數據
+            visible_wait, visible_speed, visible_approach, visible_queue = 0, 0, 0, 0
+            lane_obj = signal.observation.get_lane(lane_id)
+            
+            # 使用 items() 遍歷車輛 (這是安全的寫法)
+            for veh_id, vehicle in lane_obj.vehicles.items():
+                try:
+                    pos = signal.sumo.vehicle.getLanePosition(veh_id)
+                    dist = lane_obj.length - pos
+                    if dist <= VISIBILITY:  # <--- 近視過濾
+                        visible_wait += vehicle.wait
+                        visible_speed += vehicle.average_speed
+                        if vehicle.queued: visible_queue += 1
+                        else: visible_approach += 1
+                except: continue
+
+            lane_obs.extend([visible_approach, visible_wait, visible_queue, visible_speed])
+            obs.append(lane_obs)
+        
+        current_frame = np.expand_dims(np.asarray(obs), axis=0)
+        signal.state_history.append(current_frame)
+
+        # 3. 計算高斯延遲
+        delay_step = int(round(random.gauss(DELAY_MU, DELAY_SIGMA)))
+        delay_step = max(MIN_DELAY, min(delay_step, MAX_DELAY))
+
+        # 4. 取出歷史資料
+        if len(signal.state_history) > delay_step:
+            observations[signal_id] = signal.state_history[-1 - delay_step]
+        else:
+            observations[signal_id] = signal.state_history[0]
+
+    return observations
