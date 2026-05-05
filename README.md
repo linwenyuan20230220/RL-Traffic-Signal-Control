@@ -50,8 +50,8 @@
 本專案的底層強化學習與交通號誌模擬框架，是基於 **RESCO** 開源專案進行二次開發。
 * **原始框架來源：** [J. Ault et al., NeurIPS 2021] 
 * **本專案核心貢獻：
-*   ** 1. 實作「視野受限」與「資訊延遲」的環境干擾模擬機制。
-*   ** 2. 自主設計並實作 **STGATDQN** 模型架構（結合 Temporal Attention 與 Spatial GAT）。
-*   ** 3. 完成完整的抗干擾對照組實驗與數據分析。
+*   1. 實作「視野受限」與「資訊延遲」的環境干擾模擬機制。
+*   2. 自主設計並實作 **STGATDQN** 模型架構（結合 Temporal Attention 與 Spatial GAT）。
+*   3. 完成完整的抗干擾對照組實驗與數據分析。
 
 實驗完整數據請至 [https://drive.google.com/drive/folders/1VyszTP3wye9Q02rf8b1bV3t5l9ri2Lfy?usp=drive_link] 下載
